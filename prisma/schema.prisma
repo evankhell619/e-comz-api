@@ -10,11 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// enum Role {
-//   ADMIN
-//   USER
-// }
-
 model User {
   id         Int      @id @default(autoincrement())
   email      String   @unique
@@ -27,6 +22,7 @@ model User {
 
   tokens Token[]
   role   Role    @relation(fields: [role_id], references: [id])
+  carts  Cart[]
 
   @@map("users")
 }
@@ -86,8 +82,11 @@ model Cart {
   created_at DateTime @default(now()) @db.Timestamp(0)
   updated_at DateTime @updatedAt
   products   Product  @relation(fields: [product_id], references: [id], map: "cart_ibfk_1")
+  user       User     @relation(fields: [user_id], references: [id])
+  user_id    Int
 
   @@index([product_id], map: "product_id")
+  @@index([user_id], map: "user_id")
   @@map("cart")
 }
 
@@ -116,8 +115,15 @@ model Order {
   created_at  DateTime    @default(now()) @db.Timestamp(0)
   updated_at  DateTime    @updatedAt
   order_items OrderItem[]
+  status      StatusOrder @default(pending)
 
   @@map("orders")
+}
+
+enum StatusOrder {
+  pending
+  paid
+  cancel
 }
 
 model Product {

@@ -16,7 +16,7 @@ export const signUp = async (req, res) => {
         name,
         email,
         password: hashSync(password, 10),
-        role_id: 6,
+        role_id: 4,
       },
     });
 

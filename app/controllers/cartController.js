@@ -4,13 +4,11 @@ const cart = {
   addToCart: async (req, res) => {
     try {
       const { product_id, quantity } = req.body;
-
       if (!product_id || !quantity) {
         return res
           .status(400)
           .json({ message: "Product_id, and quantity are required" });
       }
-
       const product = await prisma.product.findUnique({
         where: {
           id: Number(product_id),
@@ -19,6 +17,9 @@ const cart = {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
+
+      const total = Number(quantity * product.price);
+
       const itemExist = await prisma.cart.findFirst({
         where: {
           product_id: Number(product_id),
@@ -33,50 +34,35 @@ const cart = {
             quantity: {
               increment: Number(quantity),
             },
+            user_id: req.user.id,
+            total: (itemExist.quantity + quantity) * product.price,
           },
         });
       } else {
         await prisma.cart.create({
           data: {
+            user_id: req.user.id,
             product_id: Number(product_id),
             quantity: Number(quantity),
+            total,
           },
         });
       }
       const cartItems = await prisma.cart.findMany({
+        where: {
+          user_id: req.user.id,
+        },
         include: {
           products: true,
         },
       });
       // console.log(cartItems);
-      const productTotals = {};
-
-      const cartItemsWithTotal = cartItems.map((cartItem) => {
-        const product = cartItem.products;
-        const quantity =
-          typeof product.quantity === "number" ? product.quantity : 0;
-        const price = typeof product.price === "number" ? product.price : 0;
-
-        const total = quantity * price;
-        cartItem.total = total;
-
-        if (!productTotals[product.id]) {
-          productTotals[product.id] = 0;
-        }
-        productTotals[product.id] += total;
-        return cartItem;
-      });
-      const total = Object.values(productTotals).reduce(
-        (acc, curr) => acc + curr,
-        0
-      );
       res.status(200).json({
         message: "Product successfully added to cart",
         total,
-        cart: cartItemsWithTotal,
+        cart: cartItems,
       });
     } catch (error) {
-      console.error(error);
       res.status(500).json({ message: "Failed to add to cart" });
     }
   },
@@ -85,35 +71,19 @@ const cart = {
     try {
       const cartItems = await prisma.cart.findMany({
         where: {
-          id: req.user.id,
+          user_id: req.user.id,
         },
         include: {
           products: true,
         },
       });
-      console.log(cartItems);
-
-      const cartItemsWithTotal = cartItems.map((cartItem) => {
-        const product = cartItem.products;
-        const quantity = product.quantity || 0;
-        const price = product.price || 0;
-
-        cartItem.total = quantity * price;
-        return cartItem;
-      });
-
-      const total = cartItemsWithTotal.reduce(
-        (acc, curr) => acc + curr.total,
-        0
-      );
-
-      res.json({
+      const total = cartItems.reduce((acc, curr) => acc + curr.total, 0);
+      return res.json({
         total,
-        cart: cartItemsWithTotal,
+        cart: cartItems,
       });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Failed to retrieve cart" });
+      res.status(500).json({ message: "Failed to retrieve cart", error });
     }
   },
 

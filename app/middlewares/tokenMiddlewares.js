@@ -13,7 +13,7 @@ const authToken = async (req, res, next) => {
     include: { user: true },
   });
 
-  console.log(tokenRecord);
+  // console.log(tokenRecord);
   if (!tokenRecord) {
     return res.status(401).json({
       message: "Unauthorized request",
