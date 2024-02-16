@@ -118,5 +118,6 @@ const cart = {
       res.status(500).json({ message: "Product failed to change quantity" });
     }
   },
+  displayCart: async (req, res) => {},
 };
 export default cart;

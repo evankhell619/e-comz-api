@@ -1,10 +1,19 @@
-import cartController from "./cartController.js";
+import prisma from "../prisma.js";
 
 const order = {
   addOrder: async (req, res) => {
     try {
-      const cart = await cartController.getCart(req.user.id);
-      await this.prisma.$transaction(async (transaction) => {
+      // const cart = await cartController.getCart(req.user.id);
+      const cart = await prisma.cart.findMany({
+        where: {
+          user_id: req.user.id,
+        },
+        include: {
+          products: true,
+        },
+      });
+      console.log(cart);
+      await prisma.$transaction(async (transaction) => {
         const newOrder = await transaction.order.create({
           data: {
             date: new Date(),
@@ -12,20 +21,33 @@ const order = {
             total: cart.total,
           },
         });
-        console.log(cart);
 
-        await transaction.orderItem.createMany({
-          data: cart.products.map((product) => ({
-            where: { user_id: req.user.id },
-            order_id: newOrder.id,
-            product_id: product.product_id,
-            quantity: product.quantity,
-            price: product.price,
-            total: product.total,
-          })),
+        const boughtProducts = await prisma.cart.findMany({
+          where: {
+            user_id: req.user.id,
+          },
+          include: {
+            products: true,
+          },
         });
 
-        await cartController.empty(req.user.id);
+        // const total = boughtProducts.reduce(
+        //   (acc, cart) => acc + cart.total_price,
+        //   0
+        // );
+        await transaction.orderItem.createMany({
+          data: boughtProducts.map((product) => {
+            return {
+              order_id: newOrder.id,
+              product_id: product.product_id,
+              quantity: product.quantity,
+              price: product.products.price,
+              total_price: product.total_price,
+            };
+          }),
+        });
+
+        // await cartController.empty(req.user.id);
       });
       res.status(200).json({ message: "Order successfully added" });
     } catch (error) {
