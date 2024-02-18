@@ -31,10 +31,6 @@ const order = {
           },
         });
 
-        // const total = boughtProducts.reduce(
-        //   (acc, cart) => acc + cart.total_price,
-        //   0
-        // );
         await transaction.orderItem.createMany({
           data: boughtProducts.map((product) => {
             return {
@@ -46,33 +42,27 @@ const order = {
             };
           }),
         });
-
-        // await cartController.empty(req.user.id);
       });
       res.status(200).json({ message: "Order successfully added" });
     } catch (error) {
+      console.log(error);
       res.status(500).json({ message: "Failed to add order" });
     }
   },
   getOrder: async (req, res) => {
     try {
       const orderId = Number(req.params.id);
-      const foundOrder = await this.prisma.order.findUnique({
+      const foundOrder = await prisma.order.findUnique({
         where: { id: orderId },
         include: {
-          order_items: {
-            include: {
-              product: true,
-            },
-          },
+          product: true,
         },
       });
-
+      console.log(foundOrder);
       if (!foundOrder) {
         throw new Error("Order not found");
       }
-
-      return foundOrder;
+      return res.status(200).json({ message: "Your order ", foundOrder });
     } catch (err) {
       console.error(err);
       throw new Error("Error while fetching the order");
